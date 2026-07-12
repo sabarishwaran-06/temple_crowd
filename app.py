@@ -14,15 +14,18 @@ USERS = {
     "student": "student123",
 }
 
+# Only these usernames are allowed to edit temple data
+ADMIN_USERS = {"admin"}
+
 # ---------------------------------------------------
 # Temple base data (synthetic — replace with real data if available)
 # base_footfall = normal day footfall, capacity = max devotees site can safely hold
 # ---------------------------------------------------
 TEMPLES = {
-    "Somnath": {"base_footfall": 8000, "capacity": 15000, "location": "Gir Somnath, Gujarat"},
-    "Dwarka": {"base_footfall": 7000, "capacity": 13000, "location": "Devbhoomi Dwarka, Gujarat"},
-    "Ambaji": {"base_footfall": 6000, "capacity": 20000, "location": "Banaskantha, Gujarat"},
-    "Pavagadh": {"base_footfall": 5000, "capacity": 10000, "location": "Panchmahal, Gujarat"},
+    "Somnath": {"base_footfall": 8000, "capacity": 15000, "location": "Gir Somnath, Gujarat", "lat": 20.8880, "lng": 70.4013},
+    "Dwarka": {"base_footfall": 7000, "capacity": 13000, "location": "Devbhoomi Dwarka, Gujarat", "lat": 22.2394, "lng": 68.9678},
+    "Ambaji": {"base_footfall": 6000, "capacity": 20000, "location": "Banaskantha, Gujarat", "lat": 24.2077, "lng": 72.8511},
+    "Pavagadh": {"base_footfall": 5000, "capacity": 10000, "location": "Panchmahal, Gujarat", "lat": 22.4837, "lng": 73.5322},
 }
 
 # Festival dates that cause huge crowd spikes (sample — extend as needed)
@@ -80,6 +83,8 @@ def predict_crowd(temple, date_str):
     return {
         "temple": temple,
         "location": TEMPLES[temple]["location"],
+        "lat": TEMPLES[temple]["lat"],
+        "lng": TEMPLES[temple]["lng"],
         "date": date_str,
         "is_festival": is_festival,
         "is_weekend": is_weekend,
@@ -106,6 +111,13 @@ def login():
     return render_template("login.html", error=error)
 
 
+@app.route("/google-login-demo")
+def google_login_demo():
+    # Demo-only Google sign-in (no real OAuth) — for presentation purposes
+    session["user"] = "google_user"
+    return redirect(url_for("index"))
+
+
 @app.route("/logout")
 def logout():
     session.pop("user", None)
@@ -117,6 +129,34 @@ def index():
     if "user" not in session:
         return redirect(url_for("login"))
     return render_template("index.html", temples=list(TEMPLES.keys()), user=session["user"])
+
+
+@app.route("/map")
+def map_view():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    return render_template("map.html")
+
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin_panel():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    if session["user"] not in ADMIN_USERS:
+        return "Access denied — admin only.", 403
+
+    message = None
+    if request.method == "POST":
+        temple = request.form.get("temple")
+        if temple in TEMPLES:
+            try:
+                TEMPLES[temple]["base_footfall"] = int(request.form.get("base_footfall"))
+                TEMPLES[temple]["capacity"] = int(request.form.get("capacity"))
+                message = f"{temple} updated successfully."
+            except (ValueError, TypeError):
+                message = "Invalid input — please enter numbers only."
+
+    return render_template("admin.html", temples=TEMPLES, message=message, user=session["user"])
 
 
 @app.route("/predict", methods=["GET"])
