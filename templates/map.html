@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Temple Map - Crowd Management</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    body { background: #fdf6ec; font-family: 'Segoe UI', sans-serif; margin: 0; }
+    .navbar { background: #b5651d; }
+    .navbar-brand { color: #fff !important; font-weight: bold; }
+    .nav-link-custom { color: #fff !important; text-decoration: none; margin-right: 15px; }
+    .nav-link-custom:hover { text-decoration: underline; }
+    #map { height: 80vh; width: 100%; border-radius: 0; }
+    .controls { padding: 15px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    .legend { display: flex; gap: 20px; align-items: center; font-size: 0.9rem; }
+    .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark mb-0">
+  <div class="container d-flex justify-content-between align-items-center">
+    <span class="navbar-brand">🛕 Pilgrimage Crowd Management System</span>
+    <div>
+        <a href="/" class="nav-link-custom">Dashboard</a>
+        <a href="/map" class="nav-link-custom"><u>Map View</u></a>
+        <a href="/logout" class="btn btn-sm btn-outline-light">Logout</a>
+    </div>
+  </div>
+</nav>
+
+<div class="controls d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+        <label class="form-label fw-bold mb-0">Select Date:</label>
+        <input type="date" id="dateInput" class="form-control form-control-sm" style="width:auto;">
+        <button class="btn btn-sm btn-warning" onclick="loadMap()">Update Map</button>
+    </div>
+    <div class="legend">
+        <span><span class="dot" style="background:#2e7d32;"></span>Low</span>
+        <span><span class="dot" style="background:#f9a825;"></span>Medium</span>
+        <span><span class="dot" style="background:#c62828;"></span>High</span>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([22.6, 71.5], 7);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(map);
+
+    let markers = [];
+
+    function colorFor(level) {
+        if (level === 'Low') return '#2e7d32';
+        if (level === 'Medium') return '#f9a825';
+        return '#c62828';
+    }
+
+    async function loadMap() {
+        const date = document.getElementById('dateInput').value;
+        if (!date) return;
+
+        const res = await fetch(`/predict_all?date=${date}`);
+        const data = await res.json();
+
+        // clear old markers
+        markers.forEach(m => map.removeLayer(m));
+        markers = [];
+
+        data.forEach(item => {
+            const marker = L.circleMarker([item.lat, item.lng], {
+                radius: 14,
+                fillColor: colorFor(item.crowd_level),
+                color: '#fff',
+                weight: 2,
+                fillOpacity: 0.9
+            }).addTo(map);
+
+            marker.bindPopup(`
+                <b>${item.temple}</b><br>
+                ${item.location}<br>
+                Crowd: <b>${item.crowd_level} (${item.crowd_percentage}%)</b><br>
+                Footfall: ${item.predicted_footfall} / ${item.capacity}<br>
+                Best time: ${item.best_time_slots.join(' / ')}
+            `);
+
+            markers.push(marker);
+        });
+    }
+
+    window.onload = () => {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dateInput').value = today;
+        loadMap();
+    };
+</script>
+
+</body>
+</html>
