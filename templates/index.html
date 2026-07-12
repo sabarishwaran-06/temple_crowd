@@ -24,6 +24,10 @@
   <div class="container d-flex justify-content-between align-items-center">
     <span class="navbar-brand" data-i18n="title">🛕 Pilgrimage Crowd Management System</span>
     <div class="d-flex align-items-center gap-2">
+        <a href="/map" class="btn btn-sm btn-outline-light">🗺️ Map View</a>
+        {% if user == 'admin' %}
+        <a href="/admin" class="btn btn-sm btn-outline-light">⚙️ Admin Panel</a>
+        {% endif %}
         <select id="langSelect" class="form-select form-select-sm" style="width:auto;" onchange="setLanguage(this.value)">
             <option value="en">English</option>
             <option value="hi">हिन्दी</option>
